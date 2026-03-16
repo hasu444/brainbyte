@@ -1,0 +1,118 @@
+/* ============================= */
+/* BrainByte Global Theme */
+/* ============================= */
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+  min-height: 100vh;
+  color: white;
+}
+
+/* glowing title */
+
+.glow-text {
+  font-size: 40px;
+  font-weight: bold;
+  color: #00eaff;
+  text-shadow:
+    0 0 10px #00eaff,
+    0 0 20px #00eaff,
+    0 0 40px #00eaff;
+}
+
+/* glass cards */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  padding: 20px;
+}
+
+.glass-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 10px 25px rgba(0, 255, 255, 0.3);
+}
+
+/* neon buttons */
+
+.btn-neon {
+  background: #00eaff;
+  border: none;
+  color: black;
+  font-weight: bold;
+  padding: 10px 18px;
+  border-radius: 10px;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.btn-neon:hover {
+  background: #00c6ff;
+  box-shadow: 0 0 15px #00eaff;
+}
+
+/* option buttons */
+
+.quiz-option {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  background: #111;
+  border: 1px solid #00eaff;
+  color: white;
+  border-radius: 10px;
+  transition: 0.3s;
+  cursor: pointer;
+}
+
+.quiz-option:hover {
+  background: #00eaff;
+  color: black;
+}
+
+/* navbar */
+
+.navbar-brainbyte {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* leaderboard */
+
+.leaderboard-card {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+/* animated background bubbles */
+
+.background-bubbles span {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #00eaff;
+  opacity: 0.3;
+  border-radius: 50%;
+  animation: float 10s linear infinite;
+}
+
+/* bubble animation */
+
+@keyframes float {
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(-1000px);
+  }
+}
