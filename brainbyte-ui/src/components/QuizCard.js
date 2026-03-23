@@ -1,32 +1,25 @@
 import React from "react"
-import {Link} from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 
-function QuizCard({quiz}){
+function QuizCard({ quiz }) {
 
-return(
+  const navigate = useNavigate()
 
-<div className="glass-card p-4">
+  return (
+    <div className="col-md-4 mb-4">
+      <div className="glass-card p-4">
+        <h4>{quiz.title}</h4>
+        <p>{quiz.description}</p>
 
-<h4 className="text-info">
-{quiz.title}
-</h4>
-
-<p className="text-light">
-{quiz.description}
-</p>
-
-<Link to={`/quiz/${quiz.id}`}>
-
-<button className="btn-neon">
-🎮 Start Quiz
-</button>
-
-</Link>
-
-</div>
-
-)
-
+        <button
+          className="btn-neon"
+          onClick={() => navigate(`/quiz/${quiz.id}`)}
+        >
+          Start Quiz
+        </button>
+      </div>
+    </div>
+  )
 }
 
 export default QuizCard

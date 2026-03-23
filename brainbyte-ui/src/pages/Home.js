@@ -1,43 +1,30 @@
-import React,{useEffect,useState} from "react"
-import {getQuizzes} from "../services/api"
+import React, { useEffect, useState } from "react"
+import { getQuizzes } from "../services/api"
 import QuizCard from "../components/QuizCard"
 
-function Home(){
+function Home() {
 
-const [quizzes,setQuizzes] = useState([])
+  const [quizzes, setQuizzes] = useState([])
 
-useEffect(()=>{
+  useEffect(() => {
+    const fetchQuizzes = async () => {
+      const data = await getQuizzes()
+      setQuizzes(data)
+    }
+    fetchQuizzes()
+  }, [])
 
-getQuizzes().then(res=>{
-setQuizzes(res.data)
-})
+  return (
+    <div className="container mt-5">
+      <h2 className="glow-text">Available Quizzes</h2>
 
-},[])
-
-return(
-
-<div className="container mt-5">
-
-<h1 className="glow-text text-center mb-5">
-Choose Your Challenge
-</h1>
-
-<div className="row">
-
-{quizzes.map(q=>(
-<div className="col-md-4 mb-4">
-
-<QuizCard quiz={q}/>
-
-</div>
-))}
-
-</div>
-
-</div>
-
-)
-
+      <div className="row mt-4">
+        {quizzes.map((quiz) => (
+          <QuizCard key={quiz.id} quiz={quiz} />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default Home

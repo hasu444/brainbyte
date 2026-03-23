@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     'rest_framework',
+    'rest_framework.authtoken',
+    'rest_framework_simplejwt',
     'corsheaders',
     
     'quizzes',
@@ -59,6 +61,24 @@ MIDDLEWARE = [
 
 # ! Allow all origins for CORS (for development purposes only)
 CORS_ALLOW_ALL_ORIGINS = True
+
+
+from datetime import timedelta
+
+REST_FRAMEWORK = {
+    
+    
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',# ✅ correct
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',  # ✅ correct
+    ],
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=2),
+}
 
 
 ROOT_URLCONF = 'brainbyte.urls'
@@ -127,3 +147,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+
+# settings.py
+OPENAI_API_KEY = "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"

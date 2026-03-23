@@ -1,57 +1,124 @@
-import React,{useState} from "react"
-import axios from "axios"
+import React, { useState } from "react"
+import { loginUser } from "../services/auth"
+import { useNavigate, useLocation } from "react-router-dom"
 
-function Login(){
+function Login() {
 
-const [username,setUsername]=useState("")
-const [password,setPassword]=useState("")
+  const navigate = useNavigate()
+  const location = useLocation()
 
-const login=async()=>{
+  const [form, setForm] = useState({
+    username: "",
+    password: ""
+  })
 
-await axios.post(
-"http://127.0.0.1:8000/api/auth/login/",
-{username,password}
-)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
-alert("Login successful")
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value
+    })
+  }
 
-}
+  const handleSubmit = async () => {
 
-return(
+    setError("")
 
-<div className="container mt-5">
+    if (!form.username || !form.password) {
+      setError("All fields are required")
+      return
+    }
 
-<div className="glass-card p-4 col-md-5 mx-auto">
+    try {
+      setLoading(true)
 
-<h3 className="text-center glow-text mb-4">
-Login
-</h3>
+      await loginUser(form)
 
-<input
-className="form-control mb-3"
-placeholder="Username"
-onChange={e=>setUsername(e.target.value)}
-/>
+      // ✅ Redirect to home
+      navigate("/")
 
-<input
-type="password"
-className="form-control mb-3"
-placeholder="Password"
-onChange={e=>setPassword(e.target.value)}
-/>
+    } catch (err) {
 
-<button
-className="btn-neon w-100"
-onClick={login}
->
-Login
-</button>
+      if (err?.error) {
+        setError(err.error)
+      } else {
+        setError("Invalid username or password")
+      }
 
-</div>
+    } finally {
+      setLoading(false)
+    }
+  }
 
-</div>
+  // ✅ Handle Enter key press
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handleSubmit()
+    }
+  }
 
-)
+  return (
+
+    <div className="center-container">
+
+      <div className="glass-card auth-box soft-shadow">
+
+        <h2 className="title text-center mb-3">
+          Welcome Back 👋
+        </h2>
+
+        <p className="subtitle text-center mb-4">
+          Login to continue your quiz journey
+        </p>
+
+        {/* ✅ SUCCESS MESSAGE FROM REGISTER */}
+        {location.state?.msg && (
+          <p className="text-success text-center">
+            {location.state.msg}
+          </p>
+        )}
+
+        {/* ERROR MESSAGE */}
+        {error && (
+          <p className="text-danger text-center">
+            {error}
+          </p>
+        )}
+
+        <input
+          name="username"
+          className="input-field"
+          placeholder="Username"
+          onChange={handleChange}
+          value={form.username}
+          onKeyDown={handleKeyPress}
+        />
+
+        <input
+          name="password"
+          type="password"
+          className="input-field"
+          placeholder="Password"
+          onChange={handleChange}
+          value={form.password}
+          onKeyDown={handleKeyPress}
+        />
+
+        <button
+          className="btn-primary-custom w-100 mt-2"
+          onClick={handleSubmit}
+          disabled={loading}
+        >
+          {loading ? "Logging in..." : "Login"}
+        </button>
+
+      </div>
+
+    </div>
+
+  )
 
 }
 

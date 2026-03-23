@@ -1,81 +1,68 @@
-import React,{useEffect,useState} from "react"
-import {getQuestions} from "../services/api"
+import React, { useEffect, useState } from "react"
+import { useParams } from "react-router-dom"
+import { getQuizById, submitQuiz } from "../services/api"
 
-function QuizGame(){
+function QuizGame() {
 
-const [questions,setQuestions] = useState([])
-const [score,setScore] = useState(0)
+  const { id } = useParams()
 
-useEffect(()=>{
+  const [quiz, setQuiz] = useState(null)
+  const [answers, setAnswers] = useState({})
+  const [result, setResult] = useState(null)
 
-getQuestions().then(res=>{
-setQuestions(res.data)
-})
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      const data = await getQuizById(id)
+      setQuiz(data)
+    }
+    fetchQuiz()
+  }, [id])
 
-},[])
+  const handleSelect = (qId, option) => {
+    setAnswers({ ...answers, [qId]: option })
+  }
 
-const checkAnswer=(q,opt)=>{
+  const handleSubmit = async () => {
+    const res = await submitQuiz(id, answers)
+    setResult(res)
+  }
 
-if(opt===q.correct_option){
-setScore(score+1)
-}
+  if (!quiz) return <h2>Loading...</h2>
 
-}
+  return (
+    <div className="container mt-5">
 
-return(
+      <h2 className="glow-text">{quiz.title}</h2>
 
-<div className="container mt-4">
+      {quiz.questions.map((q) => (
+        <div key={q.id} className="glass-card p-3 mt-3">
 
-<h2 className="glow-text text-center mb-4">
-Quiz Battle
-</h2>
+          <h5>{q.question}</h5>
 
-<h4 className="text-info mb-4">
-Score : {score}
-</h4>
+          {[1,2,3,4].map((opt) => (
+            <button
+              key={opt}
+              className="quiz-option"
+              onClick={() => handleSelect(q.id, opt)}
+            >
+              {q[`option${opt}`]}
+            </button>
+          ))}
+        </div>
+      ))}
 
-{questions.map(q=>(
+      <button className="btn-neon mt-4" onClick={handleSubmit}>
+        Submit Quiz
+      </button>
 
-<div className="glass-card p-4 mb-4">
+      {result && (
+        <h3 className="mt-4">
+          Score: {result.score} / {result.total}
+        </h3>
+      )}
 
-<h5>{q.question}</h5>
-
-<button
-className="quiz-option"
-onClick={()=>checkAnswer(q,1)}
->
-{q.option1}
-</button>
-
-<button
-className="quiz-option"
-onClick={()=>checkAnswer(q,2)}
->
-{q.option2}
-</button>
-
-<button
-className="quiz-option"
-onClick={()=>checkAnswer(q,3)}
->
-{q.option3}
-</button>
-
-<button
-className="quiz-option"
-onClick={()=>checkAnswer(q,4)}
->
-{q.option4}
-</button>
-
-</div>
-
-))}
-
-</div>
-
-)
-
+    </div>
+  )
 }
 
 export default QuizGame

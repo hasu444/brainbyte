@@ -23,6 +23,6 @@ path('admin/',admin.site.urls),
 
 path('api/',include('quizzes.urls')),
 
-path('api/auth/',include('users.urls'))
+path('api/auth/', include('users.urls')),
 
 ]

@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+
 class Category(models.Model):
     name = models.CharField(max_length=100)
 
@@ -10,7 +11,7 @@ class Category(models.Model):
 
 class Quiz(models.Model):
     title = models.CharField(max_length=200)
-    category = models.ForeignKey(Category,on_delete=models.CASCADE)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE)
     description = models.TextField()
     time_limit = models.IntegerField()
 
@@ -19,9 +20,7 @@ class Quiz(models.Model):
 
 
 class Question(models.Model):
-
-    quiz = models.ForeignKey(Quiz,on_delete=models.CASCADE)
-
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
     question = models.TextField()
 
     option1 = models.CharField(max_length=200)
@@ -31,13 +30,10 @@ class Question(models.Model):
 
     correct_option = models.IntegerField()
 
-    def __str__(self):
-        return self.question
-
 
 class Result(models.Model):
-
-    user = models.ForeignKey(User,on_delete=models.CASCADE)
-    quiz = models.ForeignKey(Quiz,on_delete=models.CASCADE)
-
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
     score = models.IntegerField()
+    total = models.IntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)

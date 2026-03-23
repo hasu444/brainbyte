@@ -1,34 +1,78 @@
 import React from "react"
-import {Link} from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
+import { isAuthenticated, getUsername, logout, isAdmin } from "../services/auth"
+import Logo from "./Logo"
 
-function Navbar(){
+function Navbar() {
 
-return(
+  const navigate = useNavigate()
 
-<nav className="navbar navbar-brainbyte px-4">
+  const handleLogout = () => {
+    logout()
+    navigate("/login")
+  }
 
-<h3 className="glow-text">🧠 BrainByte</h3>
+  return (
 
-<div>
+    <nav className="navbar navbar-expand-lg navbar-brainbyte px-4">
 
-<Link to="/" className="btn btn-neon me-2">
-Home
-</Link>
+      <Link className="navbar-brand" to="/">
+        <Logo />
+      </Link>
 
-<Link to="/login" className="btn btn-outline-light me-2">
-Login
-</Link>
+      <div className="ms-auto d-flex align-items-center gap-3">
 
-<Link to="/register" className="btn btn-neon">
-Register
-</Link>
+        {isAuthenticated() ? (
+          <>
+            <span className="text-light">
+              👋 Welcome, <b>{getUsername()}</b>
+            </span>
 
-</div>
+            <Link to="/" className="btn-secondary-custom">
+              Quizzes
+            </Link>
 
-</nav>
+            <Link to="/dashboard" className="btn-secondary-custom">
+              Dashboard
+            </Link>
 
-)
+            {/* ✅ ADMIN BUTTON */}
+            {isAdmin() && (
+  <>
+    <Link to="/admin" className="btn btn-dark">
+      Admin Panel
+    </Link>
 
+    <Link to="/admin/add-quiz" className="btn btn-warning">
+      Add Quiz
+    </Link>
+  </>
+)}
+
+            <button
+              className="btn-secondary-custom"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </>
+        ) : (
+          <>
+            <Link to="/login" className="btn-secondary-custom">
+              Login
+            </Link>
+
+            <Link to="/register" className="btn-primary-custom">
+              Register
+            </Link>
+          </>
+        )}
+
+      </div>
+
+    </nav>
+
+  )
 }
 
 export default Navbar
