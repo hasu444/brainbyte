@@ -149,5 +149,3 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-# settings.py
-OPENAI_API_KEY = "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"
