@@ -1,9 +1,9 @@
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from rest_framework.permissions import IsAdminUser
-
+from decouple import config
+import openai
 
 from .models import Quiz, Question, Result
 from .serializers import QuizSerializer, QuizDetailSerializer, ResultSerializer
@@ -24,31 +24,47 @@ def get_quizzes(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_quiz_detail(request, id):
-    quiz = Quiz.objects.get(id=id)
+    try:
+        quiz = Quiz.objects.get(id=id)
+    except Quiz.DoesNotExist:
+        return Response({"error": "Quiz not found"}, status=404)
+
     serializer = QuizDetailSerializer(quiz)
     return Response(serializer.data)
 
 # =========================
 # SUBMIT QUIZ
 # =========================
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Quiz, Question, Result
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def submit_quiz(request):
-
+    """
+    Submit a quiz and calculate score
+    """
     quiz_id = request.data.get("quiz_id")
-    answers = request.data.get("answers")
+    answers = request.data.get("answers")  # {question_id: selected_option_index}
 
-    quiz = Quiz.objects.get(id=quiz_id)
+    try:
+        quiz = Quiz.objects.get(id=quiz_id)
+    except Quiz.DoesNotExist:
+        return Response({"error": "Quiz not found"}, status=404)
+
     questions = Question.objects.filter(quiz=quiz)
-
     score = 0
 
     for q in questions:
-        if str(q.id) in answers:
-            if int(answers[str(q.id)]) == q.correct_option:
+        qid = str(q.id)
+        if qid in answers:
+            if int(answers[qid]) == q.correct_option:
                 score += 1
 
-    result = Result.objects.create(
+    # Save result
+    Result.objects.create(
         user=request.user,
         quiz=quiz,
         score=score,
@@ -57,9 +73,9 @@ def submit_quiz(request):
 
     return Response({
         "score": score,
-        "total": questions.count()
+        "total": questions.count(),
+        "message": f"You scored {score}/{questions.count()}"
     })
-
 # =========================
 # USER RESULTS
 # =========================
@@ -76,40 +92,53 @@ def get_results(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def leaderboard(request):
-
     results = Result.objects.all().order_by('-score')[:10]
     serializer = ResultSerializer(results, many=True)
-
     return Response(serializer.data)
-
-
-from rest_framework.permissions import IsAdminUser
 
 # =========================
 # CREATE QUIZ (ADMIN ONLY)
 # =========================
+# views.py
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.response import Response
+
+from .models import Quiz, Question
+from .serializers import QuizSerializer
+
+from .models import Quiz, Category
+
 @api_view(['POST'])
-@permission_classes([IsAuthenticated, IsAdminUser])
+@permission_classes([IsAuthenticated])
 def create_quiz(request):
+    """
+    Create a quiz from JSON or Excel. Default category is 'General' if not provided.
+    """
+    category_name = request.data.get("category", "General")
+    category, created = Category.objects.get_or_create(name=category_name)
 
-    title = request.data.get("title")
-    questions_data = request.data.get("questions")
+    questions_data = request.data.get("questions", [])
 
-    quiz = Quiz.objects.create(title=title)
+    quiz = Quiz.objects.create(
+        title=request.data.get("title", "Untitled Quiz"),
+        description=request.data.get("description", ""),
+        time_limit=request.data.get("time_limit", 10),
+        category=category
+    )
 
     for q in questions_data:
         Question.objects.create(
             quiz=quiz,
-            text=q["question"],
+            question=q["question"],
             option1=q["options"][0],
             option2=q["options"][1],
             option3=q["options"][2],
             option4=q["options"][3],
-            correct_option=q["options"].index(q["answer"]) + 1
+            correct_option=int(q["correct_option"])
         )
 
-    return Response({"message": "Quiz created successfully"})
-
+    return Response({"message": "Quiz created successfully!"})
 
 # =========================
 # UPDATE QUIZ (ADMIN ONLY)
@@ -117,26 +146,33 @@ def create_quiz(request):
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def update_quiz(request, id):
+    try:
+        quiz = Quiz.objects.get(id=id)
+    except Quiz.DoesNotExist:
+        return Response({"error": "Quiz not found"}, status=404)
 
-    quiz = Quiz.objects.get(id=id)
-    quiz.title = request.data.get("title")
+    quiz.title = request.data.get("title", quiz.title)
+    quiz.category_id = request.data.get("category", quiz.category_id)
+    quiz.description = request.data.get("description", quiz.description)
+    quiz.time_limit = request.data.get("time_limit", quiz.time_limit)
     quiz.save()
 
-    # delete old questions
+    # Delete old questions
     quiz.question_set.all().delete()
 
-    for q in request.data.get("questions"):
+    # Create new questions
+    for q in request.data.get("questions", []):
         Question.objects.create(
             quiz=quiz,
-            text=q["question"],
-            option1=q["options"][0],
-            option2=q["options"][1],
-            option3=q["options"][2],
-            option4=q["options"][3],
-            correct_option=q["options"].index(q["answer"]) + 1
+            question=q["question"],
+            option1=q["option1"],
+            option2=q["option2"],
+            option3=q["option3"],
+            option4=q["option4"],
+            correct_option=q.get("correct_option", 1)
         )
 
-    return Response({"message": "Quiz updated"})
+    return Response({"message": "✅ Quiz updated successfully!"})
 
 # =========================
 # DELETE QUIZ (ADMIN ONLY)
@@ -144,105 +180,44 @@ def update_quiz(request, id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def delete_quiz(request, id):
+    try:
+        quiz = Quiz.objects.get(id=id)
+    except Quiz.DoesNotExist:
+        return Response({"error": "Quiz not found"}, status=404)
 
-    quiz = Quiz.objects.get(id=id)
     quiz.delete()
+    return Response({"message": "✅ Quiz deleted successfully!"})
 
-    return Response({"message": "Quiz deleted"})
+# =========================
+# AI QUIZ GENERATION (OPTIONAL)
+# =========================
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+if OPENAI_API_KEY:
+    openai.api_key = OPENAI_API_KEY
 
-
-
-from openai import OpenAI
-from django.conf import settings
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework.response import Response
-import json
-import re
-
-# Initialize OpenAI client
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
-
-
-from openai import OpenAI
-from django.conf import settings
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework.response import Response
-import json
-import re
-import logging
-
-logger = logging.getLogger(__name__)
-
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated, IsAdminUser])
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
 def generate_ai_quiz(request):
-    topic = request.data.get("topic")
-
-    if not topic:
-        return Response({"error": "Topic is required"}, status=400)
-
-    prompt = f"""
-    STRICT RULES:
-    - ONLY return JSON
-    - NO explanation or extra text
-
-    Create 5 multiple choice questions on {topic}
-
-    Format:
-    [
-      {{
-        "question": "Question here",
-        "options": ["A", "B", "C", "D"],
-        "answer": "A"
-      }}
-    ]
-    """
+    if not OPENAI_API_KEY:
+        return Response({"error": "OpenAI API key not set"}, status=500)
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
+        topic = request.data.get("topic")
+        if not topic:
+            return Response({"error": "Topic is required"}, status=400)
+
+        prompt = f"Generate 5 multiple choice questions on '{topic}' in JSON format like: \
+[{{'question':'', 'option1':'', 'option2':'', 'option3':'', 'option4':'', 'correct_option':1}}]"
+
+        response = openai.chat.completions.create(
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7
         )
 
-        content = response.choices[0].message.content
-        logger.info(f"AI raw response: {content}")
-
-        # Extract JSON array only
-        match = re.search(r"\[.*\]", content, re.DOTALL)
-
-        if not match:
-            logger.error("AI returned no JSON")
-            return Response({
-                "error": "AI did not return valid JSON",
-                "raw": content
-            }, status=500)
-
-        json_str = match.group()
-        try:
-            questions = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse failed: {e}")
-            return Response({
-                "error": "JSON parsing failed",
-                "raw": content
-            }, status=500)
-
-        # Optional: validate questions structure
-        for q in questions:
-            if "question" not in q or "options" not in q or "answer" not in q:
-                logger.error("AI returned invalid question format")
-                return Response({
-                    "error": "AI returned invalid question format",
-                    "raw": content
-                }, status=500)
-
-        return Response({"questions": questions})
+        text = response.choices[0].message.content
+        return Response({"quiz": text})
 
     except Exception as e:
-        logger.exception("AI quiz generation failed")
-        return Response({"error": str(e)}, status=500)
+        print(e)
+        return Response({"error": "❌ Failed to generate AI quiz"}, status=500)

@@ -1,35 +1,29 @@
 from django.db import models
 from django.contrib.auth.models import User
 
-
 class Category(models.Model):
     name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
 
-
 class Quiz(models.Model):
     title = models.CharField(max_length=200)
-    category = models.ForeignKey(Category, on_delete=models.CASCADE)
-    description = models.TextField()
-    time_limit = models.IntegerField()
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, default=1)  # default category
+    description = models.TextField(blank=True, default="")
+    time_limit = models.IntegerField(default=10)  # default 10 minutes
 
     def __str__(self):
         return self.title
 
-
 class Question(models.Model):
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
     question = models.TextField()
-
     option1 = models.CharField(max_length=200)
     option2 = models.CharField(max_length=200)
     option3 = models.CharField(max_length=200)
     option4 = models.CharField(max_length=200)
-
     correct_option = models.IntegerField()
-
 
 class Result(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)

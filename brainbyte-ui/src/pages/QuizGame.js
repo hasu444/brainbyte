@@ -1,68 +1,71 @@
-import React, { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
-import { getQuizById, submitQuiz } from "../services/api"
+import React, { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
+import { submitQuiz } from "../services/quiz";
 
 function QuizGame() {
-
-  const { id } = useParams()
-
-  const [quiz, setQuiz] = useState(null)
-  const [answers, setAnswers] = useState({})
-  const [result, setResult] = useState(null)
+  const { id } = useParams();
+  const [quiz, setQuiz] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [result, setResult] = useState(null);
 
   useEffect(() => {
     const fetchQuiz = async () => {
-      const data = await getQuizById(id)
-      setQuiz(data)
-    }
-    fetchQuiz()
-  }, [id])
+      const token = localStorage.getItem("token");
+      const res = await axios.get(`http://127.0.0.1:8000/api/quizzes/${id}/`, {
+        headers: { Authorization: `Token ${token}` },
+      });
+      setQuiz(res.data);
+    };
+    fetchQuiz();
+  }, [id]);
 
-  const handleSelect = (qId, option) => {
-    setAnswers({ ...answers, [qId]: option })
-  }
+  const handleSelect = (questionId, optionIndex) => {
+    setAnswers({ ...answers, [questionId]: optionIndex });
+  };
 
   const handleSubmit = async () => {
-    const res = await submitQuiz(id, answers)
-    setResult(res)
-  }
+    const data = await submitQuiz(id, answers);
+    setResult(data);
+  };
 
-  if (!quiz) return <h2>Loading...</h2>
+  if (!quiz) return <p>Loading...</p>;
 
   return (
-    <div className="container mt-5">
-
-      <h2 className="glow-text">{quiz.title}</h2>
+    <div className="container mt-4">
+      <h2>{quiz.title}</h2>
 
       {quiz.questions.map((q) => (
-        <div key={q.id} className="glass-card p-3 mt-3">
-
-          <h5>{q.question}</h5>
-
-          {[1,2,3,4].map((opt) => (
-            <button
-              key={opt}
-              className="quiz-option"
-              onClick={() => handleSelect(q.id, opt)}
-            >
-              {q[`option${opt}`]}
-            </button>
+        <div key={q.id} className="mb-3">
+          <p>{q.question}</p>
+          {q.options.map((opt, idx) => (
+            <div key={idx} className="form-check">
+              <input
+                className="form-check-input"
+                type="radio"
+                name={`q-${q.id}`}       // important: group by question ID
+                value={idx + 1}           // value sent to state
+                checked={answers[q.id] === idx + 1} // mark checked
+                onChange={() => handleSelect(q.id, idx + 1)}
+              />
+              <label className="form-check-label">{opt}</label>
+            </div>
           ))}
         </div>
       ))}
 
-      <button className="btn-neon mt-4" onClick={handleSubmit}>
+      <button className="btn btn-primary mt-3" onClick={handleSubmit}>
         Submit Quiz
       </button>
 
       {result && (
-        <h3 className="mt-4">
-          Score: {result.score} / {result.total}
-        </h3>
+        <div className="mt-3">
+          <h4>Result: {result.score}/{result.total}</h4>
+          <p>{result.message}</p>
+        </div>
       )}
-
     </div>
-  )
+  );
 }
 
-export default QuizGame
+export default QuizGame;
