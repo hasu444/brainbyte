@@ -1,53 +1,128 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
-from django.contrib.auth.models import User
 from decouple import config
 import openai
 
-from .models import Quiz, Question, Result
+from .models import Quiz, Question, Result, Category
 from .serializers import QuizSerializer, QuizDetailSerializer, ResultSerializer
 
-# =========================
-# GET ALL QUIZZES
-# =========================
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_quizzes(request):
-    quizzes = Quiz.objects.all()
-    serializer = QuizSerializer(quizzes, many=True)
-    return Response(serializer.data)
 
 # =========================
-# GET QUIZ WITH QUESTIONS
+# GET ALL + CREATE QUIZ
 # =========================
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
-def get_quiz_detail(request, id):
+def quizzes(request):
+
+    # =========================
+    # GET ALL QUIZZES
+    # =========================
+    if request.method == "GET":
+        quizzes = Quiz.objects.all()
+        serializer = QuizSerializer(quizzes, many=True)
+        return Response(serializer.data)
+
+    # =========================
+    # CREATE QUIZ
+    # =========================
+    if request.method == "POST":
+        if not request.user.is_staff:
+            return Response({"error": "Only admin can create"}, status=403)
+
+        category_name = request.data.get("category", "General")
+        category, _ = Category.objects.get_or_create(name=category_name)
+
+        quiz = Quiz.objects.create(
+            title=request.data.get("title"),
+            description=request.data.get("description"),
+            time_limit=request.data.get("time_limit", 10),
+            category=category
+        )
+
+        for q in request.data.get("questions", []):
+            Question.objects.create(
+                quiz=quiz,
+                question=q["question"],
+                option1=q["options"][0],
+                option2=q["options"][1],
+                option3=q["options"][2],
+                option4=q["options"][3],
+                correct_option=q["correct_option"]
+            )
+
+        return Response({"message": "✅ Quiz created successfully!"})
+
+
+# =========================
+# GET + UPDATE + DELETE QUIZ
+# =========================
+@api_view(['GET', 'PUT', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def quiz_detail_update(request, id):
+
     try:
         quiz = Quiz.objects.get(id=id)
     except Quiz.DoesNotExist:
         return Response({"error": "Quiz not found"}, status=404)
 
-    serializer = QuizDetailSerializer(quiz)
-    return Response(serializer.data)
+    # =========================
+    # GET SINGLE QUIZ
+    # =========================
+    if request.method == "GET":
+        serializer = QuizDetailSerializer(quiz)
+        return Response(serializer.data)
+
+    # =========================
+    # UPDATE QUIZ
+    # =========================
+    if request.method == "PUT":
+        if not request.user.is_staff:
+            return Response({"error": "Only admins can update"}, status=403)
+
+        quiz.title = request.data.get("title", quiz.title)
+        quiz.category_id = request.data.get("category", quiz.category_id)
+        quiz.description = request.data.get("description", quiz.description)
+        quiz.time_limit = request.data.get("time_limit", quiz.time_limit)
+        quiz.save()
+
+        # delete old questions
+        quiz.question_set.all().delete()
+
+        # recreate questions
+        for q in request.data.get("questions", []):
+            Question.objects.create(
+                quiz=quiz,
+                question=q["question"],
+                option1=q["option1"],
+                option2=q["option2"],
+                option3=q["option3"],
+                option4=q["option4"],
+                correct_option=q.get("correct_option", 1)
+            )
+
+        return Response({"message": "✅ Quiz updated successfully!"})
+
+    # =========================
+    # DELETE QUIZ
+    # =========================
+    if request.method == "DELETE":
+        if not request.user.is_staff:
+            return Response({"error": "Only admins can delete"}, status=403)
+
+        quiz.delete()
+        return Response({"message": "✅ Quiz deleted successfully!"})
+
 
 # =========================
 # SUBMIT QUIZ
 # =========================
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from .models import Quiz, Question, Result
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def submit_quiz(request):
-    """
-    Submit a quiz and calculate score
-    """
+
     quiz_id = request.data.get("quiz_id")
-    answers = request.data.get("answers")  # {question_id: selected_option_index}
+    answers = request.data.get("answers")
 
     try:
         quiz = Quiz.objects.get(id=quiz_id)
@@ -63,7 +138,6 @@ def submit_quiz(request):
             if int(answers[qid]) == q.correct_option:
                 score += 1
 
-    # Save result
     Result.objects.create(
         user=request.user,
         quiz=quiz,
@@ -76,6 +150,8 @@ def submit_quiz(request):
         "total": questions.count(),
         "message": f"You scored {score}/{questions.count()}"
     })
+
+
 # =========================
 # USER RESULTS
 # =========================
@@ -85,6 +161,7 @@ def get_results(request):
     results = Result.objects.filter(user=request.user)
     serializer = ResultSerializer(results, many=True)
     return Response(serializer.data)
+
 
 # =========================
 # LEADERBOARD
@@ -96,118 +173,42 @@ def leaderboard(request):
     serializer = ResultSerializer(results, many=True)
     return Response(serializer.data)
 
-# =========================
-# CREATE QUIZ (ADMIN ONLY)
-# =========================
-# views.py
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
-from rest_framework.response import Response
-
-from .models import Quiz, Question
-from .serializers import QuizSerializer
-
-from .models import Quiz, Category
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def create_quiz(request):
-    """
-    Create a quiz from JSON or Excel. Default category is 'General' if not provided.
-    """
-    category_name = request.data.get("category", "General")
-    category, created = Category.objects.get_or_create(name=category_name)
-
-    questions_data = request.data.get("questions", [])
-
-    quiz = Quiz.objects.create(
-        title=request.data.get("title", "Untitled Quiz"),
-        description=request.data.get("description", ""),
-        time_limit=request.data.get("time_limit", 10),
-        category=category
-    )
-
-    for q in questions_data:
-        Question.objects.create(
-            quiz=quiz,
-            question=q["question"],
-            option1=q["options"][0],
-            option2=q["options"][1],
-            option3=q["options"][2],
-            option4=q["options"][3],
-            correct_option=int(q["correct_option"])
-        )
-
-    return Response({"message": "Quiz created successfully!"})
 
 # =========================
-# UPDATE QUIZ (ADMIN ONLY)
-# =========================
-@api_view(['PUT'])
-@permission_classes([IsAuthenticated, IsAdminUser])
-def update_quiz(request, id):
-    try:
-        quiz = Quiz.objects.get(id=id)
-    except Quiz.DoesNotExist:
-        return Response({"error": "Quiz not found"}, status=404)
-
-    quiz.title = request.data.get("title", quiz.title)
-    quiz.category_id = request.data.get("category", quiz.category_id)
-    quiz.description = request.data.get("description", quiz.description)
-    quiz.time_limit = request.data.get("time_limit", quiz.time_limit)
-    quiz.save()
-
-    # Delete old questions
-    quiz.question_set.all().delete()
-
-    # Create new questions
-    for q in request.data.get("questions", []):
-        Question.objects.create(
-            quiz=quiz,
-            question=q["question"],
-            option1=q["option1"],
-            option2=q["option2"],
-            option3=q["option3"],
-            option4=q["option4"],
-            correct_option=q.get("correct_option", 1)
-        )
-
-    return Response({"message": "✅ Quiz updated successfully!"})
-
-# =========================
-# DELETE QUIZ (ADMIN ONLY)
-# =========================
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated, IsAdminUser])
-def delete_quiz(request, id):
-    try:
-        quiz = Quiz.objects.get(id=id)
-    except Quiz.DoesNotExist:
-        return Response({"error": "Quiz not found"}, status=404)
-
-    quiz.delete()
-    return Response({"message": "✅ Quiz deleted successfully!"})
-
-# =========================
-# AI QUIZ GENERATION (OPTIONAL)
+# AI QUIZ GENERATION
 # =========================
 OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+
 if OPENAI_API_KEY:
     openai.api_key = OPENAI_API_KEY
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def generate_ai_quiz(request):
+
     if not OPENAI_API_KEY:
         return Response({"error": "OpenAI API key not set"}, status=500)
 
     try:
         topic = request.data.get("topic")
+
         if not topic:
             return Response({"error": "Topic is required"}, status=400)
 
-        prompt = f"Generate 5 multiple choice questions on '{topic}' in JSON format like: \
-[{{'question':'', 'option1':'', 'option2':'', 'option3':'', 'option4':'', 'correct_option':1}}]"
+        prompt = f"""
+        Generate 5 MCQs on {topic} in JSON:
+        [
+          {{
+            "question": "",
+            "option1": "",
+            "option2": "",
+            "option3": "",
+            "option4": "",
+            "correct_option": 1
+          }}
+        ]
+        """
 
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -215,9 +216,10 @@ def generate_ai_quiz(request):
             temperature=0.7
         )
 
-        text = response.choices[0].message.content
-        return Response({"quiz": text})
+        return Response({
+            "quiz": response.choices[0].message.content
+        })
 
     except Exception as e:
         print(e)
-        return Response({"error": "❌ Failed to generate AI quiz"}, status=500)
+        return Response({"error": "❌ AI generation failed"}, status=500)

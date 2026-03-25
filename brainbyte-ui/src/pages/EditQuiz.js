@@ -1,98 +1,148 @@
-import React, { useEffect, useState } from "react"
-import axios from "axios"
-import { useParams, useNavigate } from "react-router-dom"
+import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+import axios from "axios";
 
 function EditQuiz() {
+  const { id } = useParams();
 
-  const { id } = useParams()
-  const navigate = useNavigate()
+  const [quiz, setQuiz] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [quiz, setQuiz] = useState(null)
-  const token = localStorage.getItem("token")
+  /* ============================= */
+  /* FETCH QUIZ */
+  /* ============================= */
 
   useEffect(() => {
-    fetchQuiz()
-  }, [])
+    const fetchQuiz = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-  const fetchQuiz = async () => {
-    const res = await axios.get(
-      `http://127.0.0.1:8000/api/quizzes/${id}/`,
-      {
-        headers: { Authorization: `Token ${token}` }
+        const res = await axios.get(
+          `http://127.0.0.1:8000/api/quizzes/${id}/`,
+          {
+            headers: { Authorization: `Token ${token}` },
+          }
+        );
+
+        // ✅ Ensure questions exist
+        const data = res.data;
+        data.questions = data.questions || [];
+
+        setQuiz(data);
+      } catch (err) {
+        console.error("Error fetching quiz:", err);
+      } finally {
+        setLoading(false);
       }
-    )
-    setQuiz(res.data)
-  }
+    };
 
-  const handleChange = (index, field, value) => {
-    const updated = [...quiz.questions]
-    updated[index][field] = value
-    setQuiz({ ...quiz, questions: updated })
-  }
+    fetchQuiz();
+  }, [id]);
+
+  /* ============================= */
+  /* HANDLE CHANGE (SAFE UPDATE) */
+  /* ============================= */
+
+  const handleQuestionChange = (qIndex, field, value) => {
+    setQuiz((prev) => {
+      const updatedQuestions = [...prev.questions];
+
+      updatedQuestions[qIndex] = {
+        ...updatedQuestions[qIndex],
+        [field]: value,
+      };
+
+      return {
+        ...prev,
+        questions: updatedQuestions,
+      };
+    });
+  };
+
+  /* ============================= */
+  /* SAVE QUIZ */
+  /* ============================= */
 
   const handleSave = async () => {
-    await axios.put(
-      `http://127.0.0.1:8000/api/quizzes/${id}/`,
-      quiz,
-      {
-        headers: { Authorization: `Token ${token}` }
-      }
-    )
-    alert("✅ Updated!")
-    navigate("/admin")
+    try {
+      const token = localStorage.getItem("token");
+
+      await axios.put(
+        `http://127.0.0.1:8000/api/quizzes/${id}/`,
+        quiz,
+        {
+          headers: { Authorization: `Token ${token}` },
+        }
+      );
+
+      alert("✅ Quiz updated successfully!");
+    } catch (err) {
+      console.error("Update error:", err);
+      alert("❌ Failed to update quiz");
+    }
+  };
+
+  /* ============================= */
+  /* LOADING */
+  /* ============================= */
+
+  if (loading) {
+    return <p className="text-center mt-5">Loading...</p>;
   }
 
-  if (!quiz) return <p className="text-center mt-5">Loading...</p>
+  if (!quiz) {
+    return <p className="text-center mt-5 text-danger">Quiz not found</p>;
+  }
+
+  /* ============================= */
+  /* UI */
+  /* ============================= */
 
   return (
-    <div className="container mt-5">
+    <div className="container mt-4">
+      <h2 className="mb-4">✏️ Edit Quiz: {quiz.title}</h2>
 
-      <h2 className="text-center mb-4">✏ Edit Quiz</h2>
+      {quiz.questions.length === 0 && (
+        <p className="text-muted">No questions available.</p>
+      )}
 
-      <input
-        className="form-control mb-3"
-        value={quiz.title}
-        onChange={(e) => setQuiz({ ...quiz, title: e.target.value })}
-      />
+      {quiz.questions.map((q, index) => (
+        <div key={q.id || index} className="card p-3 mb-3 shadow-sm">
+          <h5>Question {index + 1}</h5>
 
-      {quiz.questions.map((q, i) => (
-        <div key={i} className="glass-card p-3 mb-3">
-
+          {/* QUESTION */}
           <input
+            type="text"
             className="form-control mb-2"
-            value={q.question}
-            onChange={(e) => handleChange(i, "question", e.target.value)}
+            value={q.question || ""}
+            onChange={(e) =>
+              handleQuestionChange(index, "question", e.target.value)
+            }
           />
 
-          {q.options.map((opt, j) => (
-            <input
-              key={j}
-              className="form-control mb-1"
-              value={opt}
-              onChange={(e) => {
-                const updated = [...quiz.questions]
-                updated[i].options[j] = e.target.value
-                setQuiz({ ...quiz, questions: updated })
-              }}
-            />
-          ))}
-
-          <input
-            className="form-control mt-2"
-            placeholder="Correct Answer"
-            value={q.answer}
-            onChange={(e) => handleChange(i, "answer", e.target.value)}
-          />
-
+          {/* OPTIONS */}
+          {["option1", "option2", "option3", "option4"].map(
+            (optKey, idx) => (
+              <input
+                key={idx}
+                type="text"
+                className="form-control mb-2"
+                value={q[optKey] || ""}
+                onChange={(e) =>
+                  handleQuestionChange(index, optKey, e.target.value)
+                }
+                placeholder={`Option ${idx + 1}`}
+              />
+            )
+          )}
         </div>
       ))}
 
-      <button className="btn btn-success w-100" onClick={handleSave}>
-        Save Changes
+      <button className="btn btn-success mt-3" onClick={handleSave}>
+        💾 Save Changes
       </button>
-
     </div>
-  )
+  );
 }
 
-export default EditQuiz
+export default EditQuiz;

@@ -1,13 +1,17 @@
-import React from "react";
+import React, { useState } from "react";
 import * as XLSX from "xlsx";
-import axios from "axios";
+import { createQuiz } from "../services/api";
 
 function ExcelUpload() {
-  const token = localStorage.getItem("token");
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState("");
 
   const handleFile = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    setLoading(true);
+    setMessage("");
 
     try {
       const data = await file.arrayBuffer();
@@ -16,40 +20,75 @@ function ExcelUpload() {
 
       const json = XLSX.utils.sheet_to_json(sheet);
 
-      // Format data to match backend
-      const questions = json.map((row) => ({
-        question: row.Question,
-        options: [row.Option1, row.Option2, row.Option3, row.Option4],
-        correct_option: row.Answer, // should be 1-based index
-      }));
+      if (!json.length) {
+        throw new Error("Excel file is empty");
+      }
 
-      const title = file.name.replace(/\..+$/, ""); // use filename as quiz title
-
-      await axios.post(
-        "http://127.0.0.1:8000/api/quizzes/create/",
-        {
-          title,
-          description: "Created from Excel",
-          time_limit: 10,
-          questions,
-        },
-        {
-          headers: {
-            Authorization: `Token ${token}`,
-          },
+      // ✅ Convert Excel → Backend format
+      const questions = json.map((row, index) => {
+        if (
+          !row.Question ||
+          !row.Option1 ||
+          !row.Option2 ||
+          !row.Option3 ||
+          !row.Option4 ||
+          !row.Answer
+        ) {
+          throw new Error(`Invalid data in row ${index + 1}`);
         }
-      );
 
-      alert("✅ Quiz uploaded successfully from Excel!");
+        return {
+          question: row.Question,
+          options: [
+            row.Option1,
+            row.Option2,
+            row.Option3,
+            row.Option4,
+          ],
+          correct_option: Number(row.Answer), // must be 1-4
+        };
+      });
+
+      const title = file.name.replace(/\..+$/, "");
+
+      // 🔥 USE CORRECT API
+      await createQuiz({
+        title,
+        description: "Created from Excel",
+        time_limit: 10,
+        category: "Excel Upload",
+        questions,
+      });
+
+      setMessage("✅ Quiz uploaded successfully!");
     } catch (err) {
       console.error(err);
-      alert("❌ Error uploading quiz. Check console.");
+      setMessage("❌ Upload failed. Check Excel format.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="text-center mt-4">
-      <input type="file" accept=".xlsx, .xls" onChange={handleFile} />
+    <div className="container mt-4 text-center">
+      <h4 className="mb-3">📊 Upload Quiz via Excel</h4>
+
+      <input
+        type="file"
+        accept=".xlsx, .xls"
+        className="form-control w-50 mx-auto"
+        onChange={handleFile}
+      />
+
+      {loading && (
+        <p className="mt-3 text-primary">Uploading... ⏳</p>
+      )}
+
+      {message && (
+        <div className="alert mt-3 alert-info">
+          {message}
+        </div>
+      )}
     </div>
   );
 }

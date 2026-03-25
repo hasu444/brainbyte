@@ -1,40 +1,231 @@
-/* ============================= */
-/* GLOBAL LAYOUT */
-/* ============================= */
+/* ============================================
+   QUIZ ARENA - APP.CSS
+   Global Application Styles | Layout & Structure
+   Perfectly Coordinated with Theme System
+   ============================================ */
 
-.page-wrapper {
-  padding-top: 80px;
+/* ---------- IMPORT GOOGLE FONTS ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+/* ---------- CSS VARIABLES (Fallback) ---------- */
+:root {
+  --app-header-height: 70px;
+  --app-footer-height: 60px;
+  --z-negative: -1;
+  --z-normal: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-modal: 100;
+  --z-tooltip: 200;
 }
 
-/* ============================= */
-/* AUTH (LOGIN / REGISTER) */
-/* ============================= */
+/* ---------- APP LAYOUT STRUCTURE ---------- */
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--theme-gradient, linear-gradient(135deg, #f5f0ff 0%, #ffe6f0 100%));
+  position: relative;
+  overflow-x: hidden;
+  transition: background 0.3s ease;
+}
 
-.auth-box {
+/* Animated Background Pattern */
+.App::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
-  max-width: 420px;
+  height: 100%;
+  background-image: 
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 40px,
+      rgba(108, 92, 231, 0.02) 40px,
+      rgba(108, 92, 231, 0.02) 80px
+    );
+  pointer-events: none;
+  z-index: var(--z-negative);
+  transition: opacity 0.3s ease;
 }
 
-/* ============================= */
-/* QUIZ */
-/* ============================= */
-
-.quiz-container {
-  max-width: 700px;
-  margin: auto;
+/* ---------- MAIN CONTENT AREA ---------- */
+.main-content {
+  flex: 1;
+  position: relative;
+  z-index: var(--z-normal);
+  min-height: calc(100vh - var(--app-header-height));
 }
 
-.quiz-question {
-  font-size: 18px;
-  margin-bottom: 10px;
+/* ---------- PAGE TRANSITIONS ---------- */
+.page-enter {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
-/* ============================= */
-/* MOBILE */
-/* ============================= */
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
 
+.page-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* ---------- LOADING SKELETON ---------- */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(20, 24, 36, 0.6) 25%,
+    rgba(108, 92, 231, 0.1) 50%,
+    rgba(20, 24, 36, 0.6) 75%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 12px;
+}
+
+.skeleton-card {
+  height: 280px;
+  border-radius: 20px;
+}
+
+.skeleton-title {
+  height: 28px;
+  width: 70%;
+  margin-bottom: 1rem;
+}
+
+.skeleton-text {
+  height: 16px;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* ---------- ANIMATIONS ---------- */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* ---------- UTILITY CLASSES ---------- */
+.text-center {
+  text-align: center;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, var(--theme-primary, #6c5ce7), var(--theme-secondary, #a66bbe));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.position-relative {
+  position: relative;
+}
+
+.position-absolute {
+  position: absolute;
+}
+
+/* ---------- RESPONSIVE DESIGN ---------- */
 @media (max-width: 768px) {
-  .title {
-    font-size: 28px;
+  .main-content {
+    padding: 1rem 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 0.5rem 0;
+  }
+}
+
+/* ---------- PRINT STYLES ---------- */
+@media print {
+  .navbar,
+  .footer,
+  .modal-overlay,
+  .toast-container {
+    display: none;
+  }
+  
+  .App {
+    background: white;
+  }
+  
+  .main-content {
+    padding: 0;
+  }
+}
+
+/* ---------- DARK MODE SUPPORT ---------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg-primary: #0a0c15;
+    --app-bg-secondary: #0f121c;
+    --app-bg-tertiary: #141824;
   }
 }
