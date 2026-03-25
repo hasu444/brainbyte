@@ -49,6 +49,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -154,3 +155,8 @@ OPENAI_API_KEY = config('OPENAI_API_KEY')
 
 # settings.py
 OPENAI_API_KEY = "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"
+
+
+ALLOWED_HOSTS = ['*']
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
