@@ -159,4 +159,6 @@ OPENAI_API_KEY = "sk-proj-FaCBlN15G0674LPzu8VhJnUR_gan0nJQxuRvKGhhKTtBMgDf48X0ui
 
 ALLOWED_HOSTS = ['*']
 
+import os
+
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
